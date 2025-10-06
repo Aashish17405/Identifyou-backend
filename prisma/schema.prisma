@@ -1,0 +1,148 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// User persona types
+enum Persona {
+  YOUNG_TEEN
+  OLDER_TEEN
+  COUNSELLOR
+}
+
+/// Room type enum
+enum RoomType {
+  PUBLIC
+  PRIVATE
+}
+
+enum QuestionType {
+  SELECT
+  MULTI_SELECT
+  TEXT
+}
+
+model User {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username  String   @unique @db.VarChar(32)
+  persona   Persona
+  email     String   @unique @db.VarChar(32)
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  // Relations
+  createdRooms   Room[]                  @relation("UserCreatedRooms")
+  memberships    UserRoom[]
+  questionnaires QuestionnaireResponse[]
+}
+
+model Room {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roomId    String?   @unique @db.VarChar(64) // Custom readable room code or identifier
+  name      String   @db.VarChar(64)
+  type      RoomType
+  createdBy String?  @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  // Relations
+  creator     User?      @relation("UserCreatedRooms", fields: [createdBy], references: [id], onDelete: SetNull)
+  memberships UserRoom[]
+
+  @@unique([name, type])
+  @@index([name, type], name: "idx_rooms_name_type")
+}
+
+model UserRoom {
+  id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId   String    @db.Uuid
+  roomId   String    @db.Uuid
+  joinedAt DateTime  @default(now()) @db.Timestamptz
+  leftAt   DateTime? @db.Timestamptz
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([userId], name: "idx_user_rooms_user_id")
+  @@index([roomId], name: "idx_user_rooms_room_id")
+}
+
+/// Questionnaire Template (e.g., “Onboarding”)
+model Questionnaire {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  questions Question[]
+  responses QuestionnaireResponse[]
+}
+
+model Question {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionnaireId String       @db.Uuid
+  questionText    String
+  type            QuestionType
+  order           Int
+
+  questionnaire Questionnaire    @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  options       QuestionOption[]
+  answers       Answer[]
+
+  @@index([questionnaireId])
+}
+
+model QuestionOption {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionId  String @db.Uuid
+  optionLabel String
+  optionValue String
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  Answer   Answer[]
+
+  @@index([questionId])
+}
+
+model QuestionnaireResponse {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @db.Uuid
+  questionnaireId String   @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz
+
+  // Relations
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  answers       Answer[]
+
+  @@index([userId])
+  @@index([questionnaireId])
+}
+
+model Answer {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  responseId       String  @db.Uuid
+  questionId       String  @db.Uuid
+  selectedOptionId String? @db.Uuid // ✅ directly reference the chosen option
+  textAnswer       String? // ✅ for open-ended answers
+
+  response       QuestionnaireResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question       Question              @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption QuestionOption?       @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@index([responseId])
+  @@index([questionId])
+  @@index([selectedOptionId])
+}
