@@ -35,7 +35,7 @@ roomsRouter.get("/:userId", async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(400).json({ error: "Missing userId parameter" });
     }
-    console.log("Fetching authId for user:", userId);
+    console.log("Fetching rooms for user:", userId);
     const rooms = await prisma.userRoom.findMany({
       where: { userId: userId },
       include: { room: true },

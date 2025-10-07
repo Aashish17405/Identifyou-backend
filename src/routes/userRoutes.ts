@@ -12,10 +12,12 @@ userRouter.get("/:authId", async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { id: authId },
     });
+    console.log("User fetched:", user);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json(user);
+    const username = user.username;
+    res.json({ username: username });
   } catch (error: Error | unknown) {
     if (error instanceof Error) {
       res.status(500).json({ error: error.message });
