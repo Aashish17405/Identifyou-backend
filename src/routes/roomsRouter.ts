@@ -28,6 +28,33 @@ roomsRouter.get("/room/:roomId", async (req: Request, res: Response) => {
   }
 });
 
+roomsRouter.get("/existing", async (req: Request, res: Response) => {
+  try {
+    const { userId, roomName, roomType } = req.query;
+
+    console.log("Checking existing room with details:", { userId, roomName, roomType });
+
+    if (!userId || !roomName || !roomType) {
+      return res.status(400).json({ error: "Missing userId, roomName, or roomType query parameter" });
+    }
+
+    const existingRoom = await prisma.room.findFirst({
+      where: { name: String(roomName), createdBy: String(userId), type: String(roomType) as "PUBLIC" | "PRIVATE" },
+    });
+
+    if(!existingRoom) {
+      console.log("No existing room found with this name for the user.");
+      res.json({ existingRoom: false });
+      return;
+    }
+
+    res.json({ existingRoom: !!existingRoom });
+  } catch (error) {
+    console.error("Error checking existing room:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 roomsRouter.get("/:userId", async (req: Request, res: Response) => {
   try {
     // Fetch rooms from the database
@@ -71,8 +98,17 @@ roomsRouter.get("/:userId", async (req: Request, res: Response) => {
 roomsRouter.post("/", async (req: Request, res: Response) => {
   try {
     const { userId, roomId, roomName, roomType } = req.body;
-    if (!userId || !roomId) {
-      return res.status(400).json({ error: "Missing userId or roomId" });
+    if (!userId || !roomId || !roomName || !roomType) {
+      return res.status(400).json({ error: "Missing userId, roomId, roomName, or roomType" });
+    }
+
+    const existingRoom = await prisma.room.findFirst({
+      where: { name: roomName, createdBy: userId, type: roomType },
+    });
+
+    if (existingRoom) {
+      console.log("Room with this name already exists for the user.");
+      return res.status(409).json({ error: "Room with this details already exists." });
     }
 
     // Create a new userRoom entry
