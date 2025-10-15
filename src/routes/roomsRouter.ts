@@ -86,9 +86,13 @@ roomsRouter.get("/:userId", async (req: Request, res: Response) => {
     const publicRooms = rooms
       .filter((ur) => ur.room.type === "PUBLIC")
       .map((ur) => ur.room);
+    const recommendedRooms = rooms
+      .filter((ur) => ur.room.type === "RECOMMENDED")
+      .map((ur) => ur.room);
     console.log("Private rooms:", privateRooms);
     console.log("Public rooms:", publicRooms);
-    res.json({ privateRooms, publicRooms });
+    console.log("Recommended rooms:", recommendedRooms);
+    res.json({ privateRooms, publicRooms, recommendedRooms });
   } catch (error) {
     console.error("Error fetching rooms:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -123,6 +127,25 @@ roomsRouter.post("/", async (req: Request, res: Response) => {
     res.status(201).json(userRoom);
   } catch (error) {
     console.error("Error creating user room:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+roomsRouter.delete("/", async (req: Request, res: Response) => {
+  try {
+    const { userId, roomId } = req.body;
+    if (!userId || !roomId) {
+      return res.status(400).json({ error: "Missing userId or roomId" });
+    }
+
+    // Delete the userRoom entry
+    await prisma.room.deleteMany({
+      where: { createdBy: userId, roomId: roomId },
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting user room:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });

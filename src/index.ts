@@ -3,7 +3,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import cors from "cors";
 import userRouter from "./routes/userRoutes.js";
 import roomsRouter from "./routes/roomsRouter.js";
-import prisma from "./utils/prisma.js";
+import { questionnaireRouter } from "./routes/questionnaireRouter.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,17 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/users", userRouter);
 app.use("/api/rooms", roomsRouter);
-
-app.get("/api", async (req: Request, res: Response) => {
-  try {
-    const users = await prisma.user.findMany();
-    console.log(users[0])
-    res.send("Welcome to Identifyou API");
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(error);
-  }
-});
+app.use("/api/questionnaire", questionnaireRouter);
 
 // 404 handler
 app.use((req: Request, res: Response, next: NextFunction) => {

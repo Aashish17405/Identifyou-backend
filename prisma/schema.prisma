@@ -24,6 +24,7 @@ enum Persona {
 enum RoomType {
   PUBLIC
   PRIVATE
+  RECOMMENDED
 }
 
 enum QuestionType {
